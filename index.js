@@ -148,7 +148,7 @@ class DocumentTransform {
 
       const newDocument = visit(this.document, {
         [Kind.SELECTION_SET](node) {
-          if (node.selections.find(s => s.name.value === __SELECTIONS__)) {
+          if (node.selections.find(s => s.name && s.name.value === __SELECTIONS__)) {
             return Object.assign({}, node, {
               selections: node.selections
                 .filter(s => s.name.value !== __SELECTIONS__)

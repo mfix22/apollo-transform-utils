@@ -209,7 +209,9 @@ describe('transforms', () => {
       new PickTransform('node'),
       new DocumentTransform(`query {
         user {
-          ${DocumentTransform.__SELECTIONS__}
+          ... on User {
+            ${DocumentTransform.__SELECTIONS__}
+          }
         }
       }`)
     ]
@@ -218,7 +220,9 @@ describe('transforms', () => {
 
     expect(print(newOp.document).trim()).toEqual(dedent`{
         user {
-          id
+          ... on User {
+            id
+          }
         }
       }`
     )
