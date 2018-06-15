@@ -135,7 +135,7 @@ class PickTransform {
 }
 
 const __SELECTIONS__ = '__SELECTIONS__'
-class DocumentTransform {
+class DocumentTransformRequest {
   constructor(query) {
     this.document = typeof query === 'string' ? parse(query) : query
   }
@@ -165,6 +165,55 @@ class DocumentTransform {
     return originalRequest
   }
 }
+
+const get = key => obj => {
+  if (!key) return obj
+  return key.split('.').reduce((accum, k) => (accum != null ? accum[k] : undefined), obj)
+}
+class DocumentTransformResult {
+  constructor(query) {
+    this.document = typeof query === 'string' ? parse(query) : query
+    const fieldPath = []
+
+    visit(this.document, {
+      // eslint-disable-next-line
+      [Kind.SELECTION_SET](node, key, parent) {
+        if (parent.name) {
+          fieldPath.push(parent.name.value)
+        }
+
+        if (node.selections.find(s => s.name && s.name.value === '__SELECTIONS__')) {
+          return false
+        }
+      }
+    })
+
+    this.fieldPath = fieldPath
+    this.get = get(`data.${this.fieldPath.join('.')}`)
+  }
+
+  transformResult(response){
+    return {
+      ...response,
+      data: this.get(response)
+    }
+  }
+}
+
+class DocumentTransform {
+  constructor(query) {
+    this.request = new DocumentTransformRequest(query)
+    this.result = new DocumentTransformResult(query)
+  }
+  transformRequest(...args) {
+    return this.request.transformRequest(...args)
+  }
+  transformResult(...args) {
+    return this.result.transformResult(...args)
+  }
+}
+DocumentTransform.Request = DocumentTransformRequest
+DocumentTransform.Result = DocumentTransformResult
 DocumentTransform.__SELECTIONS__ = __SELECTIONS__
 
 class Debug {
