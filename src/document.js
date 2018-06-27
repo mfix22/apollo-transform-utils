@@ -29,6 +29,13 @@ class DocumentTransformRequest {
         }
       })
 
+      const newOperation = newDocument.definitions.find(
+        def => def.kind === Kind.OPERATION_DEFINITION
+      )
+      // TODO only include the variables needed. Also, handle variable name conflicts between those needed from original
+      // request and those that were declared the document used when contructing this transform
+      newOperation.variableDefinitions = newOperation.variableDefinitions.concat(operation.variableDefinitions)
+
       return Object.assign({}, originalRequest, {
         document: newDocument
       })
