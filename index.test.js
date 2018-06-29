@@ -280,7 +280,8 @@ describe('transforms', () => {
             id
             fieldWithArg(someArg: $someVar)
           }
-        }`)
+        }`),
+        variables: {someVar: "val"}
       }
 
       const transforms = [
@@ -305,6 +306,7 @@ describe('transforms', () => {
           }
         }`
       )
+      expect(newOp.variables).toEqual(operation.variables)
     })
 
     test('should support variables declared in the new document', () => {
@@ -314,9 +316,11 @@ describe('transforms', () => {
             id
             fieldWithArg(someArg: $someVar)
           }
-        }`)
+        }`),
+        variables: {someVar: "val"}
       }
 
+      const args = {newVar: 'hello'}
       const transforms = [
         new PickTransform('node'),
         new DocumentTransform(`query ($newVar: ID) {
@@ -326,7 +330,7 @@ describe('transforms', () => {
             }
             otherField(withId: $newVar)
           }
-        }`)
+        }`, args)
       ]
 
       const newOp = applyRequestTransforms(operation, transforms)
@@ -341,6 +345,7 @@ describe('transforms', () => {
           }
         }`
       )
+      expect(newOp.variables).toEqual({...operation.variables, newVar: args.newVar})
     })
 
     test('should prevent variable name conflicts between those in selection and newly declared', () => {
@@ -356,9 +361,11 @@ describe('transforms', () => {
               differentField(filter: $anotherVar)
             }
           }
-        }`)
+        }`),
+        variables: {someVar: "val", anotherVar: 123}
       }
 
+      const args = {someVar: 'abc1234567890', anotherVar: "value to delegate document var"}
       const transforms = [
         new PickTransform('node'),
         new DocumentTransform(`query ($someVar: ID, $anotherVar: String) {
@@ -372,7 +379,7 @@ describe('transforms', () => {
               anotherField(using: $anotherVar)
             }
           }
-        }`)
+        }`, args)
       ]
 
       const newOp = applyRequestTransforms(operation, transforms)
@@ -397,6 +404,7 @@ describe('transforms', () => {
           }
         }`
       )
+      expect(newOp.variables).toEqual({...operation.variables, _v0_someVar: args.someVar, _v1_anotherVar: args.anotherVar})
     })
   })
 })

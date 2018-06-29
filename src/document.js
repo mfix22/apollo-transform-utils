@@ -7,8 +7,9 @@ const get = key => obj => {
 
 const __SELECTIONS__ = '__SELECTIONS__'
 class DocumentTransformRequest {
-  constructor(query) {
+  constructor(query, args) {
     this.document = typeof query === 'string' ? parse(query) : query
+    this.args = args || {}
   }
 
   transformRequest(originalRequest) {
@@ -89,11 +90,30 @@ class DocumentTransformRequest {
         def => def.kind === Kind.OPERATION_DEFINITION
       )
 
-      // include all original variables, delegateToSchema uses FilterToSchema to remove unused ones already
+      // include all original variables definitions, delegateToSchema uses FilterToSchema to remove unused ones already
       newOperation.variableDefinitions = newOperation.variableDefinitions.concat(operation.variableDefinitions)
 
+      // set values into request variables for any variables declaring in new document with values provided via args
+      const renamedVariableMappings = Object.entries(variablesNames)
+      let newToOriginalVarNameMap = {}
+      if (renamedVariableMappings.length > 0) {
+        newToOriginalVarNameMap = renamedVariableMappings.reduce((accum, [origName, newName]) => {
+          accum[newName] = origName
+          return accum
+        }, {})
+      }
+      const newVariables = {...originalRequest.variables}
+      newOperation.variableDefinitions.forEach(def => {
+        const name = def.variable.name.value
+        const origName = newToOriginalVarNameMap[name] || name
+        if (!newVariables[name] && this.args[origName]) {
+          newVariables[name] = this.args[origName]
+        }
+      })
+
       return Object.assign({}, originalRequest, {
-        document: newDocument
+        document: newDocument,
+        variables: newVariables
       })
     }
     return originalRequest
@@ -131,8 +151,8 @@ class DocumentTransformResult {
 }
 
 class DocumentTransform {
-  constructor(query) {
-    this.request = new DocumentTransformRequest(query)
+  constructor(query, args) {
+    this.request = new DocumentTransformRequest(query, args)
     this.result = new DocumentTransformResult(query)
   }
   transformRequest(...args) {
