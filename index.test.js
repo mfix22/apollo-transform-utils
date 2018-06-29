@@ -213,6 +213,8 @@ describe('transforms', () => {
             ... on User {
               ${DocumentTransform.__SELECTIONS__}
             }
+            foo
+            bar
           }
         }`)
       ]
@@ -221,6 +223,48 @@ describe('transforms', () => {
 
       expect(print(newOp.document).trim()).toEqual(dedent`{
           user {
+            ... on User {
+              id
+            }
+            foo
+            bar
+          }
+        }`
+      )
+    })
+
+    test('should include the selections multiple times if specified as such', () => {
+      const operation = {
+        document: parse(`{
+          node {
+            id
+          }
+        }`)
+      }
+
+      expect(applyRequestTransforms(operation, [ new DocumentTransform() ]).document).toEqual(operation.document)
+
+      const transforms = [
+        new PickTransform('node'),
+        new DocumentTransform(`query {
+          user {
+            ... on User {
+              ${DocumentTransform.__SELECTIONS__}
+            }
+            ... on User {
+              ${DocumentTransform.__SELECTIONS__}
+            }
+          }
+        }`)
+      ]
+
+      const newOp = applyRequestTransforms(operation, transforms)
+
+      expect(print(newOp.document).trim()).toEqual(dedent`{
+          user {
+            ... on User {
+              id
+            }
             ... on User {
               id
             }
@@ -299,38 +343,57 @@ describe('transforms', () => {
       )
     })
 
-    test('should prevent variable name conflicts between those in selction and newly declared', () => {
+    test('should prevent variable name conflicts between those in selection and newly declared', () => {
       const operation = {
-        document: parse(`query ($someVar: String) {
+        document: parse(`query ($someVar: String, $anotherVar: Int) {
           node {
             id
             fieldWithArg(someArg: $someVar)
+            anObject {
+              otherFieldUsing(anArg: $someVar)
+            }
+            ... on Foo {
+              differentField(filter: $anotherVar)
+            }
           }
         }`)
       }
 
       const transforms = [
         new PickTransform('node'),
-        new DocumentTransform(`query ($someVar: ID) {
+        new DocumentTransform(`query ($someVar: ID, $anotherVar: String) {
           user {
             ... on User {
               ${DocumentTransform.__SELECTIONS__}
             }
             otherField(withId: $someVar)
+            ... on User {
+              nestedField(withArg: $someVar)
+              anotherField(using: $anotherVar)
+            }
           }
         }`)
       ]
 
       const newOp = applyRequestTransforms(operation, transforms)
 
-      // TODO this will fail right now, we need to implement something to produce _generatedVar, or conceptually similar
-      expect(print(newOp.document).trim()).toEqual(dedent`query ($_generatedVar: ID, $someVar: String) {
+      expect(print(newOp.document).trim()).toEqual(dedent`query ($_v0_someVar: ID, $_v1_anotherVar: String, $someVar: String, $anotherVar: Int) {
           user {
             ... on User {
               id
               fieldWithArg(someArg: $someVar)
+              anObject {
+                otherFieldUsing(anArg: $someVar)
+              }
+              ... on Foo {
+                differentField(filter: $anotherVar)
+              }
             }
-            otherField(withId: $_generatedVar)
+            otherField(withId: $_v0_someVar)
+            ... on User {
+              nestedField(withArg: $_v0_someVar)
+              anotherField(using: $_v1_anotherVar)
+            }
           }
         }`
       )

@@ -16,24 +16,80 @@ class DocumentTransformRequest {
       const operation = originalRequest.document.definitions.find(
         def => def.kind === Kind.OPERATION_DEFINITION
       )
-
-      const newDocument = visit(this.document, {
-        [Kind.SELECTION_SET](node) {
-          if (node.selections.find(s => s.name && s.name.value === __SELECTIONS__)) {
-            return Object.assign({}, node, {
-              selections: node.selections
-                .filter(s => s.name.value !== __SELECTIONS__)
-                .concat(operation.selectionSet.selections)
-            })
-          }
-        }
-      })
-
-      const newOperation = newDocument.definitions.find(
+      let newOperation = this.document.definitions.find(
         def => def.kind === Kind.OPERATION_DEFINITION
       )
-      // TODO only include the variables needed. Also, handle variable name conflicts between those needed from original
-      // request and those that were declared the document used when contructing this transform
+
+      let existingVariables = [], varsToRename = [], variableCounter = 0, variablesNames = {};
+
+      // generate new variable name same as Apollo's AddArgumentsAsVariables transform
+      const generateVariableName = (name) => {
+        let varName;
+        do {
+          varName = `_v${variableCounter}_${name}`;
+          variableCounter++;
+        } while (existingVariables.indexOf(varName) !== -1);
+        return varName;
+      };
+      const getNewVariableName = (name) => {
+        let newName = variablesNames[name]
+        if (!newName) {
+          newName = generateVariableName(name)
+          variablesNames[name] = newName
+          existingVariables.push(newName)
+        }
+        return newName
+      }
+
+      if (operation.variableDefinitions.length > 0 && newOperation.variableDefinitions.length > 0) {
+        // check for duplicate variables
+        existingVariables.push(...operation.variableDefinitions.map(v => v.variable.name.value))
+        varsToRename = newOperation.variableDefinitions.map(v => {
+          const varName = v.variable.name.value;
+          if (existingVariables.includes(varName)) {
+            return varName
+          } else {
+            existingVariables.push(varName)
+          }
+        })
+      }
+
+      const newDocument = visit(this.document, {
+        [Kind.SELECTION_SET]: {
+          enter(node) {
+            if (node.selections.find(s => s.name && s.name.value === __SELECTIONS__)) {
+              return Object.assign({}, node, {
+                selections: node.selections
+                  .filter(s => s.name.value !== __SELECTIONS__)
+                  .concat(operation.selectionSet.selections)
+              })
+            }
+          }
+        },
+        [Kind.VARIABLE]: {
+          enter(node) {
+            if (varsToRename.length > 0 && varsToRename.includes(node.name.value)) {
+              node.name.value = getNewVariableName(node.name.value)
+            }
+          }
+        },
+        enter(node) {
+          if (operation.selectionSet.selections.includes(node)) {
+            return false;
+          }
+        }
+        // TODO can we potentially end the traversal early to prevent unnecessary visiting?
+        // enter(node, visitor) {
+        //   // if replaced all the __SELECTIONS__ and varsToRename.length === 0
+        //   return BREAK
+        // }
+      })
+
+      newOperation = newDocument.definitions.find(
+        def => def.kind === Kind.OPERATION_DEFINITION
+      )
+
+      // include all original variables, delegateToSchema uses FilterToSchema to remove unused ones already
       newOperation.variableDefinitions = newOperation.variableDefinitions.concat(operation.variableDefinitions)
 
       return Object.assign({}, originalRequest, {
