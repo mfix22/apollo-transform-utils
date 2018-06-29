@@ -45,10 +45,10 @@ class DocumentTransformRequest {
       if (operation.variableDefinitions.length > 0 && newOperation.variableDefinitions.length > 0) {
         // check for duplicate variables
         existingVariables.push(...operation.variableDefinitions.map(v => v.variable.name.value))
-        varsToRename = newOperation.variableDefinitions.map(v => {
+        newOperation.variableDefinitions.forEach(v => {
           const varName = v.variable.name.value;
           if (existingVariables.includes(varName)) {
-            return varName
+            varsToRename.push(varName)
           } else {
             existingVariables.push(varName)
           }

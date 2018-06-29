@@ -365,10 +365,10 @@ describe('transforms', () => {
         variables: {someVar: "val", anotherVar: 123}
       }
 
-      const args = {someVar: 'abc1234567890', anotherVar: "value to delegate document var"}
+      const args = {someVar: 'abc1234567890', anotherVar: operation.variables.anotherVar}
       const transforms = [
         new PickTransform('node'),
-        new DocumentTransform(`query ($someVar: ID, $anotherVar: String) {
+        new DocumentTransform(`query ($someVar: ID, $anotherVar: Int) {
           user {
             ... on User {
               ${DocumentTransform.__SELECTIONS__}
@@ -384,7 +384,7 @@ describe('transforms', () => {
 
       const newOp = applyRequestTransforms(operation, transforms)
 
-      expect(print(newOp.document).trim()).toEqual(dedent`query ($_v0_someVar: ID, $_v1_anotherVar: String, $someVar: String, $anotherVar: Int) {
+      expect(print(newOp.document).trim()).toEqual(dedent`query ($_v0_someVar: ID, $_v1_anotherVar: Int, $someVar: String, $anotherVar: Int) {
           user {
             ... on User {
               id
@@ -404,7 +404,7 @@ describe('transforms', () => {
           }
         }`
       )
-      expect(newOp.variables).toEqual({...operation.variables, _v0_someVar: args.someVar, _v1_anotherVar: args.anotherVar})
+      expect(newOp.variables).toEqual({...operation.variables, _v0_someVar: args.someVar, _v1_anotherVar: operation.variables.anotherVar})
     })
   })
 })
