@@ -1,6 +1,6 @@
 {
   "name": "apollo-transform-utils",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.js",
   "description": "Utility transforms for graphql-tools",
   "scripts": {
