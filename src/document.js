@@ -7,6 +7,19 @@ class DocumentTransformRequest {
   constructor(query, args) {
     this.document = typeof query === 'string' ? parse(query) : query
     this.args = args || {}
+
+    this._variableCounter = 0
+    this._existingVariables = []
+  }
+
+  // generate new variable name same as Apollo's AddArgumentsAsVariables transform
+  generateVariableName(name) {
+    let varName
+    do {
+      varName = `_v${this._variableCounter}_${name}`
+      this._variableCounter++
+    } while (this._existingVariables.indexOf(varName) !== -1)
+    return varName
   }
 
   transformRequest(originalRequest) {
@@ -14,39 +27,29 @@ class DocumentTransformRequest {
       const operation = findOperationDefinition(originalRequest.document)
       let newOperation = findOperationDefinition(this.document)
 
-      let existingVariables = []
       let varsToRename = []
       let variableCounter = 0
       let variablesNames = {}
 
-      // generate new variable name same as Apollo's AddArgumentsAsVariables transform
-      const generateVariableName = name => {
-        let varName
-        do {
-          varName = `_v${variableCounter}_${name}`
-          variableCounter++
-        } while (existingVariables.indexOf(varName) !== -1)
-        return varName
-      }
       const getNewVariableName = name => {
         let newName = variablesNames[name]
         if (!newName) {
-          newName = generateVariableName(name)
+          newName = this.generateVariableName(name)
           variablesNames[name] = newName
-          existingVariables.push(newName)
+          this._existingVariables.push(newName)
         }
         return newName
       }
 
       if (operation.variableDefinitions.length > 0 && newOperation.variableDefinitions.length > 0) {
         // check for duplicate variables
-        existingVariables.push(...operation.variableDefinitions.map(v => v.variable.name.value))
+        this._existingVariables.push(...operation.variableDefinitions.map(v => v.variable.name.value))
         newOperation.variableDefinitions.forEach(v => {
           const varName = v.variable.name.value
-          if (existingVariables.includes(varName)) {
+          if (this._existingVariables.includes(varName)) {
             varsToRename.push(varName)
           } else {
-            existingVariables.push(varName)
+            this._existingVariables.push(varName)
           }
         })
       }
