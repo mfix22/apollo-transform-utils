@@ -1,10 +1,5 @@
 const { parse, Kind, visit } = require('graphql')
-const { findOperationDefinition } = require('./util')
-
-const get = key => obj => {
-  if (!key) return obj
-  return key.split('.').reduce((accum, k) => (accum != null ? accum[k] : undefined), obj)
-}
+const { findOperationDefinition, get } = require('./util')
 
 const __SELECTIONS__ = '__SELECTIONS__'
 
@@ -93,15 +88,12 @@ class DocumentTransformRequest {
       newOperation.variableDefinitions = newOperation.variableDefinitions.concat(operation.variableDefinitions)
 
       // set values into request variables for any variables declaring in new document with values provided via args
-      const renamedVariableMappings = Object.entries(variablesNames)
-      let newToOriginalVarNameMap = {}
-      if (renamedVariableMappings.length > 0) {
-        newToOriginalVarNameMap = renamedVariableMappings.reduce((accum, [origName, newName]) => {
-          accum[newName] = origName
-          return accum
-        }, {})
-      }
-      const newVariables = { ...originalRequest.variables }
+      const newToOriginalVarNameMap = Object.entries(variablesNames).reduce((accum, [origName, newName]) => {
+        accum[newName] = origName
+        return accum
+      }, {})
+
+      const newVariables = Object.assign({}, originalRequest.variables)
       newOperation.variableDefinitions.forEach(def => {
         const name = def.variable.name.value
         const origName = newToOriginalVarNameMap[name] || name
@@ -141,10 +133,7 @@ class DocumentTransformResult {
   }
 
   transformResult(response) {
-    return {
-      ...response,
-      data: this.get(response)
-    }
+    return Object.assign({}, response, { data: this.get(response) })
   }
 }
 
