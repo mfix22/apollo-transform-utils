@@ -22,5 +22,8 @@
     "util",
     "transforms",
     "apollo"
-  ]
+  ],
+  "jest": {
+    "testURL": "http://localhost/"
+  }
 }

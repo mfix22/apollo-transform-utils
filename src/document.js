@@ -6,6 +6,10 @@ const get = key => obj => {
 }
 
 const __SELECTIONS__ = '__SELECTIONS__'
+
+const findOperationDefinition = document =>
+  document.definitions.find(def => def.kind === Kind.OPERATION_DEFINITION)
+
 class DocumentTransformRequest {
   constructor(query, args) {
     this.document = typeof query === 'string' ? parse(query) : query
@@ -14,24 +18,23 @@ class DocumentTransformRequest {
 
   transformRequest(originalRequest) {
     if (this.document) {
-      const operation = originalRequest.document.definitions.find(
-        def => def.kind === Kind.OPERATION_DEFINITION
-      )
-      let newOperation = this.document.definitions.find(
-        def => def.kind === Kind.OPERATION_DEFINITION
-      )
+      const operation = findOperationDefinition(originalRequest.document)
+      let newOperation = findOperationDefinition(this.document)
 
-      let existingVariables = [], varsToRename = [], variableCounter = 0, variablesNames = {};
+      let existingVariables = []
+      let varsToRename = []
+      let variableCounter = 0
+      let variablesNames = {}
 
       // generate new variable name same as Apollo's AddArgumentsAsVariables transform
       const generateVariableName = (name) => {
-        let varName;
+        let varName
         do {
-          varName = `_v${variableCounter}_${name}`;
-          variableCounter++;
-        } while (existingVariables.indexOf(varName) !== -1);
-        return varName;
-      };
+          varName = `_v${variableCounter}_${name}`
+          variableCounter++
+        } while (existingVariables.indexOf(varName) !== -1)
+        return varName
+      }
       const getNewVariableName = (name) => {
         let newName = variablesNames[name]
         if (!newName) {
@@ -46,7 +49,7 @@ class DocumentTransformRequest {
         // check for duplicate variables
         existingVariables.push(...operation.variableDefinitions.map(v => v.variable.name.value))
         newOperation.variableDefinitions.forEach(v => {
-          const varName = v.variable.name.value;
+          const varName = v.variable.name.value
           if (existingVariables.includes(varName)) {
             varsToRename.push(varName)
           } else {
@@ -76,7 +79,7 @@ class DocumentTransformRequest {
         },
         enter(node) {
           if (operation.selectionSet.selections.includes(node)) {
-            return false;
+            return false
           }
         }
         // TODO can we potentially end the traversal early to prevent unnecessary visiting?
@@ -86,9 +89,7 @@ class DocumentTransformRequest {
         // }
       })
 
-      newOperation = newDocument.definitions.find(
-        def => def.kind === Kind.OPERATION_DEFINITION
-      )
+      newOperation = findOperationDefinition(newDocument)
 
       // include all original variables definitions, delegateToSchema uses FilterToSchema to remove unused ones already
       newOperation.variableDefinitions = newOperation.variableDefinitions.concat(operation.variableDefinitions)
@@ -126,7 +127,6 @@ class DocumentTransformResult {
     const fieldPath = []
 
     visit(this.document, {
-      // eslint-disable-next-line
       [Kind.SELECTION_SET](node, key, parent) {
         if (parent.name) {
           fieldPath.push(parent.name.value)
