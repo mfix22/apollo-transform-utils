@@ -3,6 +3,7 @@ const { Kind, print } = require('graphql')
 
 const PickTransform = require('./src/pick')
 const DocumentTransform = require('./src/document')
+const { findOperationDefinition } = require('./src/util')
 
 const nest = (path, selections) => {
   if (!path) return selections
@@ -46,9 +47,7 @@ class NestTransform {
   }
 
   transformRequest(originalRequest) {
-    const operation = originalRequest.document.definitions.find(
-      def => def.kind === Kind.OPERATION_DEFINITION
-    )
+    const operation = findOperationDefinition(originalRequest.document)
 
     const selections = nest(this.path, operation.selectionSet.selections)
 
@@ -68,9 +67,7 @@ class InlineFragmentTransform {
 
   transformRequest(originalRequest) {
     if (this.type) {
-      const operation = originalRequest.document.definitions.find(
-        def => def.kind === Kind.OPERATION_DEFINITION
-      )
+      const operation = findOperationDefinition(originalRequest.document)
 
       operation.selectionSet = {
         kind: Kind.SELECTION_SET,
@@ -100,9 +97,7 @@ class Debug {
     console.log(
       [
         originalRequest.operationName,
-        print(
-          originalRequest.document.definitions.find(def => def.kind === Kind.OPERATION_DEFINITION)
-        ),
+        print(findOperationDefinition(originalRequest.document)),
         JSON.stringify(originalRequest.variables, null, 2)
       ].join('\n')
     )

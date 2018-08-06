@@ -4,7 +4,8 @@
   "main": "index.js",
   "description": "Utility transforms for graphql-tools",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "prettier": "prettier --no-semi --single-quote --print-width 120 *.js src/*.js --write"
   },
   "peerDependencies": {
     "graphql": "^0.7.0 || ^0.8.0 || || ^0.9.0 || || ^0.10.0 || || ^0.11.0 || ^0.12.0"
@@ -12,7 +13,9 @@
   "devDependencies": {
     "dedent": "^0.7.0",
     "graphql": "^0.13.2",
-    "graphql-tools": "^3.0.2"
+    "graphql-tools": "^3.0.2",
+    "jest": "^23.2.0",
+    "prettier": "^1.14.0"
   },
   "author": "mfix22",
   "license": "MIT",
@@ -21,5 +24,8 @@
     "util",
     "transforms",
     "apollo"
-  ]
+  ],
+  "jest": {
+    "testURL": "http://localhost/"
+  }
 }
