@@ -108,14 +108,14 @@ class DocumentTransformRequest {
         return accum
       }, {})
 
-      const newVariables = Object.assign({}, originalRequest.variables)
-      finalOperation.variableDefinitions.forEach(def => {
+      const newVariables = finalOperation.variableDefinitions.reduce((map, def) => {
         const name = def.variable.name.value
         const origName = newToOriginalVarNameMap[name] || name
-        if (!newVariables[name] && this.args[origName]) {
-          newVariables[name] = this.args[origName]
+        if (!map[name] && this.args[origName]) {
+          map[name] = this.args[origName]
         }
-      })
+        return map
+      }, Object.assign({}, originalRequest.variables))
 
       return Object.assign({}, originalRequest, {
         document: newDocument,
