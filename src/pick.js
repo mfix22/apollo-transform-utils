@@ -1,4 +1,5 @@
 const { Kind } = require('graphql')
+const { findOperationDefinition } = require('./util')
 
 const createRootObj = key => (isNaN(parseInt(key, 10)) ? {} : Array(parseInt(key, 10)))
 const assign = (keys, obj = Object.create(null)) => value => {
@@ -42,9 +43,7 @@ class PickTransformRequest {
   }
 
   transformRequest(originalRequest) {
-    const operation = originalRequest.document.definitions.find(
-      def => def.kind === Kind.OPERATION_DEFINITION
-    )
+    const operation = findOperationDefinition(originalRequest.document)
 
     operation.selectionSet = {
       kind: Kind.SELECTION_SET,

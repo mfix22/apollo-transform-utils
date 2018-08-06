@@ -1,4 +1,5 @@
 const { parse, Kind, visit } = require('graphql')
+const { findOperationDefinition } = require('./util')
 
 const get = key => obj => {
   if (!key) return obj
@@ -6,9 +7,6 @@ const get = key => obj => {
 }
 
 const __SELECTIONS__ = '__SELECTIONS__'
-
-const findOperationDefinition = document =>
-  document.definitions.find(def => def.kind === Kind.OPERATION_DEFINITION)
 
 class DocumentTransformRequest {
   constructor(query, args) {
@@ -27,7 +25,7 @@ class DocumentTransformRequest {
       let variablesNames = {}
 
       // generate new variable name same as Apollo's AddArgumentsAsVariables transform
-      const generateVariableName = (name) => {
+      const generateVariableName = name => {
         let varName
         do {
           varName = `_v${variableCounter}_${name}`
@@ -35,7 +33,7 @@ class DocumentTransformRequest {
         } while (existingVariables.indexOf(varName) !== -1)
         return varName
       }
-      const getNewVariableName = (name) => {
+      const getNewVariableName = name => {
         let newName = variablesNames[name]
         if (!newName) {
           newName = generateVariableName(name)
@@ -103,7 +101,7 @@ class DocumentTransformRequest {
           return accum
         }, {})
       }
-      const newVariables = {...originalRequest.variables}
+      const newVariables = { ...originalRequest.variables }
       newOperation.variableDefinitions.forEach(def => {
         const name = def.variable.name.value
         const origName = newToOriginalVarNameMap[name] || name
@@ -142,7 +140,7 @@ class DocumentTransformResult {
     this.get = get(`data.${this.fieldPath.join('.')}`)
   }
 
-  transformResult(response){
+  transformResult(response) {
     return {
       ...response,
       data: this.get(response)

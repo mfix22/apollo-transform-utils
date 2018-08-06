@@ -1,15 +1,7 @@
 const { print, parse } = require('graphql')
 const dedent = require('dedent')
 const { applyRequestTransforms } = require('graphql-tools/dist/transforms/transforms')
-const {
-  nest,
-  pick,
-  PickTransform,
-  InlineFragmentTransform,
-  NestTransform,
-  DocumentTransform,
-  Debug
-} = require('.')
+const { nest, pick, PickTransform, InlineFragmentTransform, NestTransform, DocumentTransform, Debug } = require('.')
 
 const assertSelection = (selection, str) => expect(print(selection).join('\n')).toBe(dedent(str))
 
@@ -145,17 +137,11 @@ describe('transforms', () => {
       }
     }
 
-    expect(applyRequestTransforms(operation, [
-      new PickTransform(),
-      new InlineFragmentTransform(),
-      new NestTransform()
-    ])).toEqual(operation)
+    expect(
+      applyRequestTransforms(operation, [new PickTransform(), new InlineFragmentTransform(), new NestTransform()])
+    ).toEqual(operation)
 
-    const transforms = [
-      new PickTransform('node'),
-      new InlineFragmentTransform('User'),
-      new NestTransform('node')
-    ]
+    const transforms = [new PickTransform('node'), new InlineFragmentTransform('User'), new NestTransform('node')]
     const newOp = applyRequestTransforms(operation, transforms)
 
     expect(print(newOp.document).trim()).toEqual(dedent`query ($id: ID!) {
@@ -164,8 +150,7 @@ describe('transforms', () => {
             id
           }
         }
-      }`
-    )
+      }`)
   })
   test('Debug', () => {
     const operation = {
@@ -183,9 +168,7 @@ describe('transforms', () => {
 
     const stub = jest.spyOn(console, 'log').mockImplementation(() => undefined)
 
-    const transforms = [
-      new Debug()
-    ]
+    const transforms = [new Debug()]
 
     const newOp = applyRequestTransforms(operation, transforms)
 
@@ -204,7 +187,7 @@ describe('transforms', () => {
         }`)
       }
 
-      expect(applyRequestTransforms(operation, [ new DocumentTransform() ]).document).toEqual(operation.document)
+      expect(applyRequestTransforms(operation, [new DocumentTransform()]).document).toEqual(operation.document)
 
       const transforms = [
         new PickTransform('node'),
@@ -229,8 +212,7 @@ describe('transforms', () => {
             foo
             bar
           }
-        }`
-      )
+        }`)
     })
 
     test('should include the selections multiple times if specified as such', () => {
@@ -242,7 +224,7 @@ describe('transforms', () => {
         }`)
       }
 
-      expect(applyRequestTransforms(operation, [ new DocumentTransform() ]).document).toEqual(operation.document)
+      expect(applyRequestTransforms(operation, [new DocumentTransform()]).document).toEqual(operation.document)
 
       const transforms = [
         new PickTransform('node'),
@@ -269,8 +251,7 @@ describe('transforms', () => {
               id
             }
           }
-        }`
-      )
+        }`)
     })
 
     test('should persist variables declared used in the selection', () => {
@@ -281,7 +262,7 @@ describe('transforms', () => {
             fieldWithArg(someArg: $someVar)
           }
         }`),
-        variables: {someVar: "val"}
+        variables: { someVar: 'val' }
       }
 
       const transforms = [
@@ -304,8 +285,7 @@ describe('transforms', () => {
               fieldWithArg(someArg: $someVar)
             }
           }
-        }`
-      )
+        }`)
       expect(newOp.variables).toEqual(operation.variables)
     })
 
@@ -317,20 +297,23 @@ describe('transforms', () => {
             fieldWithArg(someArg: $someVar)
           }
         }`),
-        variables: {someVar: "val"}
+        variables: { someVar: 'val' }
       }
 
-      const args = {newVar: 'hello'}
+      const args = { newVar: 'hello' }
       const transforms = [
         new PickTransform('node'),
-        new DocumentTransform(`query ($newVar: ID) {
+        new DocumentTransform(
+          `query ($newVar: ID) {
           user {
             ... on User {
               ${DocumentTransform.__SELECTIONS__}
             }
             otherField(withId: $newVar)
           }
-        }`, args)
+        }`,
+          args
+        )
       ]
 
       const newOp = applyRequestTransforms(operation, transforms)
@@ -343,9 +326,8 @@ describe('transforms', () => {
             }
             otherField(withId: $newVar)
           }
-        }`
-      )
-      expect(newOp.variables).toEqual({...operation.variables, newVar: args.newVar})
+        }`)
+      expect(newOp.variables).toEqual({ ...operation.variables, newVar: args.newVar })
     })
 
     test('should prevent variable name conflicts between those in selection and newly declared', () => {
@@ -362,13 +344,14 @@ describe('transforms', () => {
             }
           }
         }`),
-        variables: {someVar: "val", anotherVar: 123}
+        variables: { someVar: 'val', anotherVar: 123 }
       }
 
-      const args = {someVar: 'abc1234567890', anotherVar: operation.variables.anotherVar}
+      const args = { someVar: 'abc1234567890', anotherVar: operation.variables.anotherVar }
       const transforms = [
         new PickTransform('node'),
-        new DocumentTransform(`query ($someVar: ID, $anotherVar: Int) {
+        new DocumentTransform(
+          `query ($someVar: ID, $anotherVar: Int) {
           user {
             ... on User {
               ${DocumentTransform.__SELECTIONS__}
@@ -379,12 +362,15 @@ describe('transforms', () => {
               anotherField(using: $anotherVar)
             }
           }
-        }`, args)
+        }`,
+          args
+        )
       ]
 
       const newOp = applyRequestTransforms(operation, transforms)
 
-      expect(print(newOp.document).trim()).toEqual(dedent`query ($_v0_someVar: ID, $_v1_anotherVar: Int, $someVar: String, $anotherVar: Int) {
+      expect(print(newOp.document).trim())
+        .toEqual(dedent`query ($_v0_someVar: ID, $_v1_anotherVar: Int, $someVar: String, $anotherVar: Int) {
           user {
             ... on User {
               id
@@ -402,9 +388,12 @@ describe('transforms', () => {
               anotherField(using: $_v1_anotherVar)
             }
           }
-        }`
-      )
-      expect(newOp.variables).toEqual({...operation.variables, _v0_someVar: args.someVar, _v1_anotherVar: operation.variables.anotherVar})
+        }`)
+      expect(newOp.variables).toEqual({
+        ...operation.variables,
+        _v0_someVar: args.someVar,
+        _v1_anotherVar: operation.variables.anotherVar
+      })
     })
   })
 })
