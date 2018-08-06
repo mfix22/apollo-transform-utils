@@ -8,8 +8,10 @@ class DocumentTransformRequest {
     this.document = typeof query === 'string' ? parse(query) : query
     this.args = args || {}
 
+    /* private */
     this._variableCounter = 0
     this._existingVariables = []
+    this._variablesNames = {}
   }
 
   // generate new variable name same as Apollo's AddArgumentsAsVariables transform
@@ -22,20 +24,30 @@ class DocumentTransformRequest {
     return varName
   }
 
+  renameVariable(name) {
+    let newName = this._variablesNames[name]
+    if (!newName) {
+      newName = this.generateVariableName(name)
+      this._variablesNames[name] = newName
+      this._existingVariables.push(newName)
+    }
+    return newName
+  }
+
   transformRequest(originalRequest) {
+    const _ = this
+
     if (this.document) {
       const operation = findOperationDefinition(originalRequest.document)
-      let newOperation = findOperationDefinition(this.document)
+      const newOperation = findOperationDefinition(this.document)
 
-      let varsToRename = []
-      let variableCounter = 0
-      let variablesNames = {}
+      const varsToRename = []
 
-      const getNewVariableName = name => {
-        let newName = variablesNames[name]
+      const renameVariable = name => {
+        let newName = this._variablesNames[name]
         if (!newName) {
-          newName = this.generateVariableName(name)
-          variablesNames[name] = newName
+          newName = _.generateVariableName(name)
+          this._variablesNames[name] = newName
           this._existingVariables.push(newName)
         }
         return newName
@@ -69,7 +81,7 @@ class DocumentTransformRequest {
         [Kind.VARIABLE]: {
           enter(node) {
             if (varsToRename.length > 0 && varsToRename.includes(node.name.value)) {
-              node.name.value = getNewVariableName(node.name.value)
+              node.name.value = _.renameVariable(node.name.value)
             }
           }
         },
@@ -85,19 +97,19 @@ class DocumentTransformRequest {
         // }
       })
 
-      newOperation = findOperationDefinition(newDocument)
+      const finalOperation = findOperationDefinition(newDocument)
 
       // include all original variables definitions, delegateToSchema uses FilterToSchema to remove unused ones already
-      newOperation.variableDefinitions = newOperation.variableDefinitions.concat(operation.variableDefinitions)
+      finalOperation.variableDefinitions.push(...operation.variableDefinitions)
 
       // set values into request variables for any variables declaring in new document with values provided via args
-      const newToOriginalVarNameMap = Object.entries(variablesNames).reduce((accum, [origName, newName]) => {
+      const newToOriginalVarNameMap = Object.entries(this._variablesNames).reduce((accum, [origName, newName]) => {
         accum[newName] = origName
         return accum
       }, {})
 
       const newVariables = Object.assign({}, originalRequest.variables)
-      newOperation.variableDefinitions.forEach(def => {
+      finalOperation.variableDefinitions.forEach(def => {
         const name = def.variable.name.value
         const origName = newToOriginalVarNameMap[name] || name
         if (!newVariables[name] && this.args[origName]) {
