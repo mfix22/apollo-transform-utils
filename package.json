@@ -1,6 +1,6 @@
 {
   "name": "apollo-transform-utils",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "index.js",
   "description": "Utility transforms for graphql-tools",
   "scripts": {
@@ -27,5 +27,13 @@
   ],
   "jest": {
     "testURL": "http://localhost/"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mfix22/apollo-transform-utils.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mfix22/apollo-transform-utils/issues"
+  },
+  "homepage": "https://github.com/mfix22/apollo-transform-utils#readme"
 }
